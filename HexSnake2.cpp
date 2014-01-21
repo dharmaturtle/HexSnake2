@@ -5,12 +5,42 @@
 #include <vector>
 #include <ctime>
 #include <cstdlib>
+
 using namespace std;
 
 #define WIDTH 5
 #define HEIGHT 10
 
 typedef pair <int, int> coordinate;
+
+class Apple{
+public:
+	coordinate position;
+
+	bool eaten(int x, int y) {
+		if ((x == position.first) && (y == position.second)){
+			return true;
+		}
+		return false;
+	}
+
+	coordinate new_position(){
+		//int lowest = 1, highest_x = WIDTH, highest_y = HEIGHT;
+		//int range_x = (highest_x - lowest) + 1;
+		//int range_y = (highest_y - lowest) + 1;
+		//int x = lowest + int(range_x * rand()/RAND_MAX + 1.0);
+		//int y = lowest + int(range_y * rand()/RAND_MAX + 1.0);
+		srand((unsigned)time(0));
+		int x = (rand()%WIDTH+1);
+		int y = (rand()%(HEIGHT-1)+1);
+		position = make_pair(x, y);
+		return position; // -1 to account for shape of hexes, +1 to account to make rand inclusive
+	}
+
+	void print(){
+		cout << position.first <<  ' , ' << position.second << endl;
+	}
+};
 
 class Snake{
 public:
@@ -21,6 +51,13 @@ public:
 
 	bool contains(int x, int y){ //http://stackoverflow.com/a/571405/625919
 		if (find(snake.begin(), snake.end(), make_pair(x,y))!=snake.end()){
+			return true;
+		}
+		return false;
+	}
+
+	bool contains(coordinate pair){
+		if (find(snake.begin(), snake.end(), pair)!=snake.end()){
 			return true;
 		}
 		return false;
@@ -40,7 +77,7 @@ public:
 		snake[0].first;
 	}
 
-	bool move_zig(int direction_zig/*, Apple apple1*/){
+	bool move_zig(int direction_zig, Apple apple1){
 		int xhead, yhead;
 
 		if          (direction_zig == 0) { // calculating the head coordinates
@@ -78,74 +115,33 @@ public:
 				yhead = snake[0].second - 1; }
 		}
 
+		int snaketail = snake.size()-1;
+
+		if (apple1.eaten(xhead, yhead)){
+			add_coordinate(snake[snaketail].first,snake[snaketail].second);
+		}
+
+		for(int i = snaketail; i > 0; i--){ // moving the elements of each array through the memory.
+			snake[i].first = snake[i-1].first;
+			snake[i].second = snake[i-1].second;
+		}
+		snake[0].first = xhead;               // assigning the head
+		snake[0].second = yhead;
+
 		//dead check
-		bool dead = false;
+
 		if ((xhead <= 0) || (yhead <= 0) || (xhead > WIDTH) || (yhead >= HEIGHT)) // boundary check
-			dead = true;
+			return true;
 		else {
 			for (size_t i = 1; i < snake.size(); i++) {  // self intersection check
 				if ((snake[0].first == snake[i].first)
 					&&
 					(snake[0].second == snake[i].second)){
-						dead = true;
-						break;
+						return true;
 				}
 			}
 		}
-
-		int snakesize = snake.size()-1;
-		/*if (apple1.eaten(xhead, yhead)){
-			snakesize++;
-		}*/
-
-		for(int i = (snakesize); i > 0; i--){ // moving the elements of each array through the memory. TODO: There should be a more efficient way of doing this...
-			snake[i].first = snake[i-1].first;
-			snake[i].second = snake[i-1].second;
-		}
-
-		snake[0].first = xhead;               // assigning the head
-		snake[0].second = yhead;
-
-		return dead;
-	}
-};
-
-class Apple{
-public:
-	coordinate position;
-	bool eaten(Snake player1) {
-		if ((player1.snake[0].first == position.first) && (player1.snake[0].second == position.second)){
-			//new_position(player1);
-			return true;
-		}
 		return false;
-	}
-
-	bool eaten(int x, int y) {
-		if ((x == position.first) && (y == position.second)){
-			//new_position(player1);
-			return true;
-		}
-		return false;
-	}
-
-	void new_position(Snake player1){
-		//int lowest = 1, highest_x = WIDTH, highest_y = HEIGHT;
-		//int range_x = (highest_x - lowest) + 1;
-		//int range_y = (highest_y - lowest) + 1;
-		//int x = lowest + int(range_x * rand()/RAND_MAX + 1.0);
-		//int y = lowest + int(range_y * rand()/RAND_MAX + 1.0);
-		int x, y;
-		do {
-			srand((unsigned)time(0));
-			x = (rand()%WIDTH+1);
-			y = (rand()%(HEIGHT-1)+1);
-			position = make_pair(x, y); // -1 to account for shape of hexes, +1 to account to make rand inclusive
-		} while (player1.contains(x,y));
-	}
-
-	void print(){
-		cout << position.first <<  ' , ' << position.second << endl;
 	}
 };
 
@@ -156,24 +152,31 @@ int main() {
 	Apple apple1;
 	bool dead = false;
 	int direction_zig = 2;
+	int previous_zig = 2;
 
 	player1.add_coordinate(2,4);
 	player1.add_coordinate(2,3);
 	player1.add_coordinate(1,2);
 	player1.add_coordinate(1,1);
-	//player1.print_coordinates();
 
-	apple1.new_position(player1);
+	do { // generates new apple coordinates and ensures they don't intersect with snake
+		apple1.new_position();
+		srand((unsigned)time(0));
+		int x = (rand()%WIDTH+1); //xapple = random_number(1,XMAX);
+		if (HEIGHT%2 == 0)
+			int y = (rand()%(HEIGHT-1)+1); // yapple = random_number(1,YMAX-1);
+		else
+			int y = (rand()%(HEIGHT)+1); // yapple = random_number(1,YMAX);
+	} while (player1.contains(apple1.position));
 
 	// primary game loop
 	while (!dead){
-		player1.print_coordinates();
 		draw_hex(apple1, player1);
-		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+		this_thread::sleep_for(chrono::milliseconds(1000));
 		if (_kbhit()){
 			switch (_getche()){
 			case '8':
-				direction_zig = 0; break; // TODO: Add more control options, like qwe asd or uio jkl
+				direction_zig = 0; break;
 			case '9':
 				direction_zig = 1; break; // TODO: Perhaps prevent player from going backwards on themselves?
 			case '6':
@@ -185,33 +188,40 @@ int main() {
 			case '7':
 				direction_zig = 5; break;
 			}
+
+			if      (previous_zig == 0 && direction_zig == 3)
+				direction_zig = 0;
+			else if (previous_zig == 1 && direction_zig == 4)
+				direction_zig = 1;
+			else if (previous_zig == 2 && direction_zig == 5)
+				direction_zig = 2;
+			else if (previous_zig == 3 && direction_zig == 6)
+				direction_zig = 3;
+			else if (previous_zig == 4 && direction_zig == 1)
+				direction_zig = 4;
+			else if (previous_zig == 5 && direction_zig == 2)
+				direction_zig = 5;
+			previous_zig = direction_zig;
 		}
 		system("cls");                    // TODO: is there a better way to clear the screen? Flickers quite a bit
 
-		// apple eaten                       TODO: maybe make the snake grow when apple is eaten, and not the "tick" after? Will need to look at direction for this
-		if (apple1.eaten(player1)){
-			//snakesize++;
+		// apple eaten
+		if (apple1.eaten(player1.snake[0].first,player1.snake[0].second)){
 
-			/*do { // generates new apple coordinates and ensures they don't intersect with snake
-			apple_in_snake = 0;
-			xapple = random_number(1,XMAX);
-			if (YMAX%2 == 0)
-			yapple = random_number(1,YMAX-1);
-			else
-			yapple = random_number(1,YMAX);
-
-			for (i = 0; i <= snakesize; i++) {
-			if ((xapple == snake[i][0]) && (yapple == snake[i][1])){
-			apple_in_snake = 1;
-			break;
-			}
-			}
-			} while (apple_in_snake == 1);*/
+			do { // generates new apple coordinates and ensures they don't intersect with snake
+				apple1.new_position();
+				srand((unsigned)time(0));
+				int x = (rand()%WIDTH+1); //1 to width
+				if (HEIGHT%2 == 0)
+					int y = (rand()%(HEIGHT-1)+1); // 1 to height-1
+				else
+					int y = (rand()%(HEIGHT)+1); // 1 to height
+			} while (player1.contains(apple1.position));
 		}
 
-		dead = player1.move_zig(direction_zig/*, apple1*/);
+		dead = player1.move_zig(direction_zig, apple1);
 	}
-	cout << "YOU DIED.";
+	cout << "YOU DIED" << endl << "with a score of " << player1.size() - 4 << ".";
 	_getch();
 	return 0;
 }
